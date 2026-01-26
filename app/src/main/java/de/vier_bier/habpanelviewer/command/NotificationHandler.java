@@ -4,10 +4,12 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,7 +33,8 @@ public class NotificationHandler implements ICommandHandler {
             for (NotificationChannel c : mNotificationManager.getNotificationChannels()) {
                 String id = c.getId();
 
-                // getNotificationChannels also returns the notification of the foreground service.
+                // getNotificationChannels also returns the notification of the foreground
+                // service.
                 // so before deleting make sure it is one of the notification channels.
                 for (NotificationColor col : NotificationColor.values()) {
                     if (id.equals(CHANNEL_ID + "." + col.name())) {
@@ -48,7 +51,8 @@ public class NotificationHandler implements ICommandHandler {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void createChannel(String channelName, int color) {
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID + "." + channelName, channelName, NotificationManager.IMPORTANCE_DEFAULT);
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID + "." + channelName, channelName,
+                NotificationManager.IMPORTANCE_DEFAULT);
         channel.enableLights(true);
         channel.setSound(null, null);
         channel.setLightColor(color);
@@ -72,7 +76,8 @@ public class NotificationHandler implements ICommandHandler {
                 final String message = m.group(2);
 
                 final NotificationColor color = NotificationColor.valueOf(colorStr);
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(mCtx, CHANNEL_ID + "." + color.name());
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(mCtx,
+                        CHANNEL_ID + "." + color.name());
                 builder.setSmallIcon(R.drawable.logo);
                 if (message != null) {
                     builder.setContentTitle(message.trim());
@@ -80,7 +85,17 @@ public class NotificationHandler implements ICommandHandler {
                 builder.setSound(null);
                 builder.setLights(color.color(), 1000, 1000);
 
-                mNotificationManager.notify(color.ordinal(), builder.build());
+                // Check POST_NOTIFICATIONS permission on Android 13+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ContextCompat.checkSelfPermission(mCtx,
+                            android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                        mNotificationManager.notify(color.ordinal(), builder.build());
+                    } else {
+                        cmd.failed("POST_NOTIFICATIONS permission not granted");
+                    }
+                } else {
+                    mNotificationManager.notify(color.ordinal(), builder.build());
+                }
             } catch (IllegalArgumentException e) {
                 cmd.failed("invalid color: " + colorStr);
             }
@@ -113,17 +128,20 @@ public class NotificationHandler implements ICommandHandler {
             public int color() {
                 return 0xffffffff;
             }
-        }, red {
+        },
+        red {
             @Override
             public int color() {
                 return 0xffff0000;
             }
-        }, green {
+        },
+        green {
             @Override
             public int color() {
                 return 0xff00ff00;
             }
-        }, blue {
+        },
+        blue {
             @Override
             public int color() {
                 return 0xff0000ff;

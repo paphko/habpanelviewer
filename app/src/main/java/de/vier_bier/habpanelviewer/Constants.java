@@ -13,6 +13,9 @@ public final class Constants {
     public static final int REQUEST_WEBRTC = 204;
     public static final int REQUEST_VALIDATE = 205;
     public static final int REQUEST_RECORD_AUDIO = 206;
+    // request codes for Storage Access Framework
+    public static final int REQUEST_CREATE_PREF_FILE = 301;
+    public static final int REQUEST_OPEN_PREF_FILE = 302;
 
     /** Intent related constants **/
     public static final String INTENT_FLAG_CRASH = "crash";
@@ -127,6 +130,9 @@ public final class Constants {
     public static final String PREF_DB_ENCRYPTED = "pref_db_encrypted";
     public static final String PREF_DB_ASKED_ENCRYPTION = "pref_db_asked_encryption";
 
-    public static class Restart {}
-    public static class LoadStartUrl {}
+    public static class Restart {
+    }
+
+    public static class LoadStartUrl {
+    }
 }

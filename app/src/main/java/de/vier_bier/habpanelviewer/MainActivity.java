@@ -493,6 +493,8 @@ public class MainActivity extends ScreenControllingActivity
             }
 
             if (resultCode == RESULT_OK) {
+                // requires MediaProjection to be used within a foreground service
+                // we probably need to declare a service first; let AI do it...
                 MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
                 MediaProjection projection = projectionManager.getMediaProjection(RESULT_OK, data);
 

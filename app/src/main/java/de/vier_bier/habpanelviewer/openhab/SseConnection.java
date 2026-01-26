@@ -150,7 +150,7 @@ public class SseConnection implements NetworkTracker.INetworkListener, Credentia
     }
 
     private void setStatus(Status status) {
-        Log.e(TAG, "setting status " + status.name() + ", connection=" + (mEventSource == null ? "null" : mEventSource.hashCode()), new Exception("dummy"));
+        Log.d(TAG, "setting status " + status.name() + ", connection=" + (mEventSource == null ? "null" : mEventSource.hashCode()));
 
         if (status != mStatus) {
             mStatus = status;
@@ -174,7 +174,7 @@ public class SseConnection implements NetworkTracker.INetworkListener, Credentia
         mListeners.clear();
     }
 
-    interface ISseDataListener extends ISseListener{
+    interface ISseDataListener extends ISseListener {
         void data(String data);
     }
 
@@ -205,7 +205,9 @@ public class SseConnection implements NetworkTracker.INetworkListener, Credentia
 
     private class SSEHandler extends EventSourceListener {
         private int failureCount = 0;
-        SSEHandler() { }
+
+        SSEHandler() {
+        }
 
         @Override
         public void onOpen(@NotNull EventSource eventSource, @NotNull Response response) {
@@ -216,7 +218,7 @@ public class SseConnection implements NetworkTracker.INetworkListener, Credentia
 
         @Override
         public void onClosed(@NotNull EventSource eventSource) {
-            if (mStatus == Status.CONNECTED){
+            if (mStatus == Status.CONNECTED) {
                 setStatus(Status.NOT_CONNECTED);
 
                 if (mEventSource != null) {
@@ -226,7 +228,8 @@ public class SseConnection implements NetworkTracker.INetworkListener, Credentia
         }
 
         @Override
-        public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type, @NotNull String data) {
+        public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type,
+                @NotNull String data) {
             if ("message".equals(type)) {
                 failureCount = 0;
 

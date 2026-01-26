@@ -1,10 +1,14 @@
 package de.vier_bier.habpanelviewer.preferences;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,9 +19,13 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import de.vier_bier.habpanelviewer.Constants;
 import de.vier_bier.habpanelviewer.R;
 import de.vier_bier.habpanelviewer.ScreenControllingActivity;
+import de.vier_bier.habpanelviewer.UiUtil;
 
 /**
  * Activity for setting preferences.
@@ -73,7 +81,8 @@ public class PreferenceActivity extends ScreenControllingActivity implements Pre
     public void onNestedPreferenceSelected(String id) {
         mUpItem.setEnabled(true);
         getFragmentManager().beginTransaction().replace(R.id.preferences_fragment_container,
-                PreferenceFragment.newInstance(id, getIntent().getExtras()), TAG_NESTED).addToBackStack(TAG_NESTED).commit();
+                PreferenceFragment.newInstance(id, getIntent().getExtras()), TAG_NESTED).addToBackStack(TAG_NESTED)
+                .commit();
     }
 
     @Override
@@ -89,27 +98,20 @@ public class PreferenceActivity extends ScreenControllingActivity implements Pre
         int id = item.getItemId();
 
         if (id == R.id.action_pref_export) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        Constants.REQUEST_WRITE_EXTERNAL_STORAGE);
-            } else {
-                PreferenceUtil.saveSharedPreferencesToFile(this, mToolbar);
-            }
-
+            // Export
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.setType("*/*");
+            intent.putExtra(Intent.EXTRA_TITLE, "HPV.prefs");
+            startActivityForResult(intent, Constants.REQUEST_CREATE_PREF_FILE);
             return true;
         }
 
         if (id == R.id.action_pref_import) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        Constants.REQUEST_READ_EXTERNAL_STORAGE);
-            } else {
-                PreferenceUtil.loadSharedPreferencesFromFile(this, mToolbar);
-            }
+            // Import
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            startActivityForResult(intent, Constants.REQUEST_OPEN_PREF_FILE);
             return true;
         }
 
@@ -123,21 +125,54 @@ public class PreferenceActivity extends ScreenControllingActivity implements Pre
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         switch (requestCode) {
             case Constants.REQUEST_READ_EXTERNAL_STORAGE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     PreferenceUtil.loadSharedPreferencesFromFile(this, mToolbar);
+
                 }
+                break;
             }
             case Constants.REQUEST_WRITE_EXTERNAL_STORAGE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     PreferenceUtil.saveSharedPreferencesToFile(this, mToolbar);
                 }
+                break;
             }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null)
+            return;
+
+        Uri uri = data.getData();
+        try {
+            if (requestCode == Constants.REQUEST_CREATE_PREF_FILE) {
+                try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                    PreferenceUtil.saveSharedPreferencesToStream(this, os);
+                    UiUtil.showSnackBar(mToolbar, R.string.prefsExported);
+                }
+            } else if (requestCode == Constants.REQUEST_OPEN_PREF_FILE) {
+                // take persistable permission if you want
+                final int takeFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                getContentResolver().takePersistableUriPermission(uri, takeFlags);
+                try (InputStream is = getContentResolver().openInputStream(uri)) {
+                    PreferenceUtil.loadSharedPreferencesFromStream(this, is);
+                    UiUtil.showSnackBar(mToolbar, R.string.prefsImported);
+                }
+            }
+        } catch (Exception e) {
+            UiUtil.showSnackBar(mToolbar, R.string.prefsExportFailed); // or prefsImportFailed
+            Log.e("PreferenceActivity", "SAF file operation failed", e);
         }
     }
 
@@ -146,4 +181,3 @@ public class PreferenceActivity extends ScreenControllingActivity implements Pre
         return mToolbar;
     }
 }
-
