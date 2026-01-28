@@ -4,18 +4,19 @@ android {
     compileSdkVersion 33
     defaultConfig {
         applicationId "de.vier_bier.habpanelviewer"
-        minSdkVersion 21
+        minSdkVersion 29
         targetSdkVersion 33
         versionCode 10
-        versionName "0.9.27"
+        versionName "0.10.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
         buildConfigField "long", "TIMESTAMP", System.currentTimeMillis() + "L"
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -29,11 +30,22 @@ android {
     lint {
         abortOnError false
     }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 
 gradle.projectsEvaluated {
-    tasks.withType(JavaCompile) {
-        //options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    tasks.withType(JavaCompile).tap {
+        configureEach {
+            // options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        }
     }
 }
 

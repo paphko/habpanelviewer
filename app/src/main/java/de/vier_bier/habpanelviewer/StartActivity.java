@@ -48,7 +48,7 @@ public class StartActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         PreferenceManager.setDefaultValues(this, R.xml.preferences_main, false);
-        for (int id : new int[]{R.xml.preferences_accelerometer,
+        for (int id : new int[] { R.xml.preferences_accelerometer,
                 R.xml.preferences_battery,
                 R.xml.preferences_brightness,
                 R.xml.preferences_browser,
@@ -66,7 +66,7 @@ public class StartActivity extends AppCompatActivity {
                 R.xml.preferences_temperature,
                 R.xml.preferences_ui,
                 R.xml.preferences_usage,
-                R.xml.preferences_volume}) {
+                R.xml.preferences_volume }) {
             PreferenceManager.setDefaultValues(this, id, true);
         }
 
@@ -158,7 +158,7 @@ public class StartActivity extends AppCompatActivity {
                     };
                 }
             } else if (needsCredentials) {
-                if ("".equals(password)) {
+                if (password.isEmpty()) {
                     textView.setText(R.string.ServerProtectedEnterMaster);
                 } else {
                     textView.setText(R.string.WrongPassEnterMaster);
@@ -177,30 +177,31 @@ public class StartActivity extends AppCompatActivity {
             if (mAction == Action.OPEN_DB) {
                 boolean showCancel = cancelListener != null;
 
-                updateUi(View.VISIBLE, showCancel ? View.VISIBLE : View.GONE, View.VISIBLE, View.VISIBLE, (view) -> new AsyncTask<Void, Void, Void>() {
-                    String password = null;
+                updateUi(View.VISIBLE, showCancel ? View.VISIBLE : View.GONE, View.VISIBLE, View.VISIBLE,
+                        (view) -> new AsyncTask<Void, Void, Void>() {
+                            String password = null;
 
-                    @Override
-                    protected void onPreExecute() {
-                        password = mPasswd.getText().toString();
-                    }
+                            @Override
+                            protected void onPreExecute() {
+                                password = mPasswd.getText().toString();
+                            }
 
-                    @Override
-                    protected Void doInBackground(Void... voids) {
-                        if (dbState == CredentialManager.State.UNENCRYPTED) {
-                            CredentialManager.getInstance().encryptDb(StartActivity.this, password);
-                        } else {
-                            CredentialManager.getInstance().openDb(StartActivity.this, password);
-                        }
+                            @Override
+                            protected Void doInBackground(Void... voids) {
+                                if (dbState == CredentialManager.State.UNENCRYPTED) {
+                                    CredentialManager.getInstance().encryptDb(StartActivity.this, password);
+                                } else {
+                                    CredentialManager.getInstance().openDb(StartActivity.this, password);
+                                }
 
-                        return null;
-                    }
+                                return null;
+                            }
 
-                    @Override
-                    protected void onPostExecute(Void val) {
-                        onStart();
-                    }
-                }.execute(), cancelListener);
+                            @Override
+                            protected void onPostExecute(Void val) {
+                                onStart();
+                            }
+                        }.execute(), cancelListener);
             }
         }
 
@@ -210,20 +211,21 @@ public class StartActivity extends AppCompatActivity {
 
                 String host = prefs.getString(Constants.REST_HOST, "");
                 String realm = prefs.getString(Constants.REST_REALM, "");
-                CredentialManager.getInstance().getRestCredential(host, realm, new CredentialManager.CredentialsListener() {
-                    @Override
-                    public void credentialsEntered(String user, String pass) {
-                        OkHttpClientFactory.getInstance().setHost(host);
-                        OkHttpClientFactory.getInstance().setRealm(realm);
-                        OkHttpClientFactory.getInstance().setAuth(user, pass);
-                        onStart();
-                    }
+                CredentialManager.getInstance().getRestCredential(host, realm,
+                        new CredentialManager.CredentialsListener() {
+                            @Override
+                            public void credentialsEntered(String user, String pass) {
+                                OkHttpClientFactory.getInstance().setHost(host);
+                                OkHttpClientFactory.getInstance().setRealm(realm);
+                                OkHttpClientFactory.getInstance().setAuth(user, pass);
+                                onStart();
+                            }
 
-                    @Override
-                    public void credentialsCancelled() {
-                        onStart();
-                    }
-                });
+                            @Override
+                            public void credentialsCancelled() {
+                                onStart();
+                            }
+                        });
 
                 return;
             } else {
@@ -232,7 +234,7 @@ public class StartActivity extends AppCompatActivity {
         }
 
         if (mAction == Action.STARTING) {
-            updateUi(View.GONE, View.GONE, View.GONE, View.GONE, null,null);
+            updateUi(View.GONE, View.GONE, View.GONE, View.GONE, null, null);
 
             try {
                 statusTView.setText(getString(R.string.initCertStore));
@@ -272,23 +274,23 @@ public class StartActivity extends AppCompatActivity {
             textView.setText(getString(R.string.diablePowerSaving));
 
             updateUi(View.VISIBLE, View.VISIBLE, View.VISIBLE, View.GONE, (view) -> {
-                        Intent intent = new Intent();
-                        intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                        startActivity(intent);
-                    }, (view) -> {
-                        SharedPreferences.Editor editor1 = prefs.edit();
-                        editor1.putBoolean(Constants.PREF_POWER_SAVE_WARNING_SHOWN, true);
-                        editor1.apply();
-                        mAction = Action.OPEN_DB;
-                        onStart();
-                    });
+                Intent intent = new Intent();
+                intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                startActivity(intent);
+            }, (view) -> {
+                SharedPreferences.Editor editor1 = prefs.edit();
+                editor1.putBoolean(Constants.PREF_POWER_SAVE_WARNING_SHOWN, true);
+                editor1.apply();
+                mAction = Action.OPEN_DB;
+                onStart();
+            });
         } else {
             mAction = Action.OPEN_DB;
         }
     }
 
     private void updateUi(int okVisible, int cancelVisible, int scrollVisible, int passwdVisible,
-                          View.OnClickListener okListener, View.OnClickListener cancelListener) {
+            View.OnClickListener okListener, View.OnClickListener cancelListener) {
         mOkB.setVisibility(okVisible);
         mOkB.setOnClickListener(v -> {
             mCancelB.setEnabled(false);
@@ -317,7 +319,7 @@ public class StartActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                mOkB.setEnabled(s.toString().length() > 0);
+                mOkB.setEnabled(!s.toString().isEmpty());
             }
         });
 
@@ -338,11 +340,10 @@ public class StartActivity extends AppCompatActivity {
         mPasswd.requestFocus();
     }
 
-
     private void checkUpgrade(SharedPreferences prefs) {
         String lastVersion = prefs.getString(Constants.PREF_APP_VERSION, "");
 
-        if (!"".equals(lastVersion) && !BuildConfig.VERSION_NAME.equals(lastVersion)) {
+        if (!lastVersion.isEmpty() && !BuildConfig.VERSION_NAME.equals(lastVersion)) {
             SharedPreferences.Editor editor1 = prefs.edit();
             editor1.putString(Constants.PREF_APP_VERSION, BuildConfig.VERSION_NAME);
             editor1.apply();
@@ -379,7 +380,6 @@ public class StartActivity extends AppCompatActivity {
 
         return version;
     }
-
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMessageEvent(ApplicationStatus status) {
