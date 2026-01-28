@@ -112,7 +112,7 @@ public class SseConnection implements NetworkTracker.INetworkListener, Credentia
                 Request request = new Request.Builder().url(buildUrl()).build();
                 mEventSource = EventSources.createFactory(client).newEventSource(request, sseHandler);
 
-                Log.v(TAG, "mEventSource = " + mEventSource.request().url().toString());
+                Log.v(TAG, "mEventSource = " + mEventSource.request().url());
                 Log.v(TAG, "mEventSource=" + (mEventSource == null ? "null" : mEventSource.hashCode()));
             } catch (IllegalArgumentException e) {
                 setStatus(Status.INVALID_URL);

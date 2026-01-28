@@ -59,7 +59,7 @@ public class ScreenHandler implements ICommandHandler {
             try {
                 int brightness = -100;
                 if (!"AUTO".equals(value)) {
-                    brightness = Integer.parseInt(value);
+                    brightness = value != null ? Integer.parseInt(value) : 100;
                 }
 
                 cmd.start();
@@ -71,7 +71,7 @@ public class ScreenHandler implements ICommandHandler {
             String value = m2.group(1);
 
             try {
-                int seconds = Integer.parseInt(value);
+                int seconds = value != null ? Integer.parseInt(value) : 100;
                 cmd.start();
                 screenOn(seconds);
             } catch (NumberFormatException e) {
@@ -107,7 +107,7 @@ public class ScreenHandler implements ICommandHandler {
     }
 
     private synchronized void screenOn(int durationSeconds) {
-        screenOnLock.acquire(durationSeconds == 0 ? 500 : durationSeconds * 1000);
+        screenOnLock.acquire(durationSeconds == 0 ? 500 : durationSeconds * 1000L);
     }
 
     public interface DimListener {

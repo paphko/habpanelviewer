@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">HABPanelViewer</string>
     <string name="app_logo" translatable="false">App Logo</string>
+    <string name="capturing_screen">Capturing screen</string>
 
     <string name="intro_urlNotFound">correct URL has not been found. I will edit the URL in the preferences.</string>
     <string name="intro_openhabServerDetection">openHAB Server Detection</string>

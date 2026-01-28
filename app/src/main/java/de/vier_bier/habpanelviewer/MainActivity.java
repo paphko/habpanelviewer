@@ -131,6 +131,42 @@ public class MainActivity extends ScreenControllingActivity
         }
     };
 
+    // Screen capture service fields
+    private ScreenCaptureService mCaptureService;
+    private boolean mCaptureBound = false;
+    private final ServiceConnection mCaptureSC = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            mCaptureService = ((ScreenCaptureService.LocalBinder) iBinder).getService();
+            mCaptureBound = true;
+
+            // try to get a capturer; it may be created shortly after service start
+            mCapturer = mCaptureService.getCapturer();
+            if (mCapturer == null) {
+                new Thread(() -> {
+                    int tries = 0;
+                    while (tries < 20 && (mCaptureService != null && mCaptureService.getCapturer() == null)) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException ignored) {
+                        }
+                        tries++;
+                    }
+                    if (mCaptureService != null) {
+                        mCapturer = mCaptureService.getCapturer();
+                    }
+                }).start();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mCaptureBound = false;
+            mCaptureService = null;
+            mCapturer = null;
+        }
+    };
+
     private final ArrayList<IDeviceMonitor> mMonitors = new ArrayList<>();
 
     @Override
@@ -146,6 +182,16 @@ public class MainActivity extends ScreenControllingActivity
         if (mCapturer != null) {
             mCapturer.terminate();
             mCapturer = null;
+        }
+
+        // ensure capture service is stopped and unbound
+        stopService(new Intent(this, ScreenCaptureService.class));
+        if (mCaptureBound) {
+            try {
+                unbindService(mCaptureSC);
+            } catch (IllegalArgumentException ignored) {
+            }
+            mCaptureBound = false;
         }
 
         if (mFlashService != null) {
@@ -222,9 +268,11 @@ public class MainActivity extends ScreenControllingActivity
         EventBus.getDefault().register(this);
         setContentView(R.layout.activity_main);
 
-        // inflate navigation header to make sure the textview holding the connection text is created
+        // inflate navigation header to make sure the textview holding the connection
+        // text is created
         NavigationView navigationView = findViewById(R.id.nav_view);
-        ConstraintLayout navHeader = (ConstraintLayout) LayoutInflater.from(this).inflate(R.layout.navheader_main, null);
+        ConstraintLayout navHeader = (ConstraintLayout) LayoutInflater.from(this).inflate(R.layout.navheader_main,
+                null);
         navigationView.addHeaderView(navHeader);
         navigationView.setNavigationItemSelectedListener(this);
 
@@ -261,14 +309,15 @@ public class MainActivity extends ScreenControllingActivity
         final TextureView previewView = findViewById(R.id.previewView);
         boolean cameraFallback = prefs.getBoolean(Constants.PREF_CAMERA_FALLBACK, false);
         if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)
-            || (cameraFallback && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA))) {
+                || (cameraFallback && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA))) {
             if (mCam == null) {
                 mCam = new Camera(this, previewView, prefs);
             }
 
             if (mMotionVisualizer == null) {
                 int scaledSize = getResources().getDimensionPixelSize(R.dimen.motionFontSize);
-                mMotionVisualizer = new MotionVisualizer(motionView, navigationView, prefs, mCam.getSensorOrientation(), scaledSize);
+                mMotionVisualizer = new MotionVisualizer(motionView, navigationView, prefs, mCam.getSensorOrientation(),
+                        scaledSize);
 
                 mMotionDetector = new MotionDetector(this, mCam, mMotionVisualizer, mServerConnection);
             }
@@ -286,7 +335,8 @@ public class MainActivity extends ScreenControllingActivity
         mMonitors.add(new DockingStateMonitor(this, mServerConnection));
         mMonitors.add(new ScreenMonitor(this, mServerConnection));
         mMonitors.add(new NoiseLevelMonitor(this, mServerConnection));
-        mMonitors.add(new VolumeMonitor(this, (AudioManager) getSystemService(Context.AUDIO_SERVICE), mServerConnection));
+        mMonitors.add(
+                new VolumeMonitor(this, (AudioManager) getSystemService(Context.AUDIO_SERVICE), mServerConnection));
 
         SensorManager m = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mMonitors.add(new AccelerometerMonitor(this, m, mServerConnection));
@@ -299,7 +349,8 @@ public class MainActivity extends ScreenControllingActivity
             mCommandQueue = new CommandQueue(mServerConnection);
             mCommandQueue.addHandler(new InternalCommandHandler(this, mMotionDetector, mServerConnection));
             mCommandQueue.addHandler(new AdminHandler(this));
-            mCommandQueue.addHandler(new BluetoothHandler(this, (BluetoothManager) getSystemService(BLUETOOTH_SERVICE)));
+            mCommandQueue
+                    .addHandler(new BluetoothHandler(this, (BluetoothManager) getSystemService(BLUETOOTH_SERVICE)));
             mCommandQueue.addHandler(new ScreenHandler((PowerManager) getSystemService(POWER_SERVICE), this, () -> {
                 if (prefs.getBoolean(Constants.PREF_PAUSE_WEBVIEW, false)) {
                     mWebView.post(() -> mWebView.pause());
@@ -320,7 +371,8 @@ public class MainActivity extends ScreenControllingActivity
         MenuItem removeDbMenu = navigationView.getMenu().findItem(R.id.action_remove_database);
         removeDbMenu.setVisible(!CredentialManager.getInstance().isDatabaseUsed());
         MenuItem encryptDbMenu = navigationView.getMenu().findItem(R.id.action_encrypt_database);
-        encryptDbMenu.setVisible(CredentialManager.getInstance().getDatabaseState(this) == CredentialManager.State.UNENCRYPTED);
+        encryptDbMenu.setVisible(
+                CredentialManager.getInstance().getDatabaseState(this) == CredentialManager.State.UNENCRYPTED);
 
         mConnectionListener = new ISseConnectionListener() {
             private SseConnection.Status mLastStatus;
@@ -336,9 +388,9 @@ public class MainActivity extends ScreenControllingActivity
                     enterCredMenu.setVisible(newStatus == SseConnection.Status.UNAUTHORIZED);
 
                     if (newStatus == SseConnection.Status.CONNECTED) {
-                        findViewById(R.id.activity_main_layout).setPadding(0,0,0,0);
+                        findViewById(R.id.activity_main_layout).setPadding(0, 0, 0, 0);
                     } else {
-                        findViewById(R.id.activity_main_layout).setPadding(10, 10,10,10);
+                        findViewById(R.id.activity_main_layout).setPadding(10, 10, 10, 10);
                     }
                 });
 
@@ -369,19 +421,21 @@ public class MainActivity extends ScreenControllingActivity
 
                         String host = OkHttpClientFactory.getInstance().getHost();
                         String realm = OkHttpClientFactory.getInstance().getRealm();
-                        CredentialManager.getInstance().handleAuthRequest(MainActivity.this, host, realm, new CredentialManager.CredentialsListener() {
-                            @Override
-                            public void credentialsEntered(String user, String pass) {
-                                OkHttpClientFactory.getInstance().setAuth(user, pass);
-                                mServerConnection.getSseConnection().credentialsEntered("", ""); //trigger reconnect
-                            }
+                        CredentialManager.getInstance().handleAuthRequest(MainActivity.this, host, realm,
+                                new CredentialManager.CredentialsListener() {
+                                    @Override
+                                    public void credentialsEntered(String user, String pass) {
+                                        OkHttpClientFactory.getInstance().setAuth(user, pass);
+                                        mServerConnection.getSseConnection().credentialsEntered("", ""); // trigger
+                                                                                                         // reconnect
+                                    }
 
-                            @Override
-                            public void credentialsCancelled() {
-                                OkHttpClientFactory.getInstance().removeAuth();
-                                CredentialManager.getInstance().removeCredentials(host, realm);
-                            }
-                        });
+                                    @Override
+                                    public void credentialsCancelled() {
+                                        OkHttpClientFactory.getInstance().removeAuth();
+                                        CredentialManager.getInstance().removeCredentials(host, realm);
+                                    }
+                                });
                     }
                 }
 
@@ -493,20 +547,21 @@ public class MainActivity extends ScreenControllingActivity
             }
 
             if (resultCode == RESULT_OK) {
-                // requires MediaProjection to be used within a foreground service
-                // we probably need to declare a service first; let AI do it...
-                MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-                MediaProjection projection = projectionManager.getMediaProjection(RESULT_OK, data);
+                // Start a foreground service to hold the MediaProjection (required on recent
+                // Android versions)
+                Intent svc = new Intent(this, ScreenCaptureService.class);
+                svc.setAction(ScreenCaptureService.ACTION_START);
+                svc.putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode);
+                svc.putExtra(ScreenCaptureService.EXTRA_RESULT_INTENT, data);
 
-                DisplayMetrics metrics = new DisplayMetrics();
-                getWindowManager().getDefaultDisplay().getMetrics(metrics);
-
-                Point size = new Point();
-                getWindowManager().getDefaultDisplay().getSize(size);
-
-                if (mCapturer == null) {
-                    mCapturer = new ScreenCapturer(projection, size.x, size.y, metrics.densityDpi);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(svc);
+                } else {
+                    startService(svc);
                 }
+
+                // Bind so we can get the ScreenCapturer instance
+                bindService(new Intent(this, ScreenCaptureService.class), mCaptureSC, Context.BIND_AUTO_CREATE);
             }
         } else if (requestCode == Constants.REQUEST_VALIDATE) {
             if (resultCode == Activity.RESULT_CANCELED) {
@@ -544,7 +599,8 @@ public class MainActivity extends ScreenControllingActivity
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             status.set(getString(R.string.powerSavingEnabled),
-                    getString(((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName()) ? R.string.no : R.string.yes));
+                    getString(((PowerManager) getSystemService(POWER_SERVICE))
+                            .isIgnoringBatteryOptimizations(getPackageName()) ? R.string.no : R.string.yes));
         }
 
         String webview = "";
@@ -571,7 +627,8 @@ public class MainActivity extends ScreenControllingActivity
         if (!CredentialManager.getInstance().isDatabaseUsed()) {
             status.set(getString(R.string.intro_credentials), getString(R.string.disabled));
         } else {
-            status.set(getString(R.string.intro_credentials), CredentialManager.getInstance().getDatabaseState(this).name());
+            status.set(getString(R.string.intro_credentials),
+                    CredentialManager.getInstance().getDatabaseState(this).name());
         }
     }
 
@@ -587,7 +644,7 @@ public class MainActivity extends ScreenControllingActivity
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+            @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == Constants.REQUEST_CAMERA) {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -607,15 +664,26 @@ public class MainActivity extends ScreenControllingActivity
     @Override
     protected void onPause() {
         unbindService(mSC);
+        if (mCaptureBound) {
+            try {
+                unbindService(mCaptureSC);
+            } catch (IllegalArgumentException ignored) {
+            }
+            mCaptureBound = false;
+        }
+
         if (mService != null) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                NotificationChannel channel = new NotificationChannel("de.vier_bier.habpanelviewer.status", "Status", NotificationManager.IMPORTANCE_MIN);
+                NotificationChannel channel = new NotificationChannel("de.vier_bier.habpanelviewer.status", "Status",
+                        NotificationManager.IMPORTANCE_MIN);
                 channel.enableLights(false);
                 channel.setSound(null, null);
-                ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
+                ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE))
+                        .createNotificationChannel(channel);
             }
 
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "de.vier_bier.habpanelviewer.status");
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(this,
+                    "de.vier_bier.habpanelviewer.status");
             builder.setSmallIcon(R.drawable.logo);
             mService.startForeground(42, builder.build());
         }
@@ -671,10 +739,20 @@ public class MainActivity extends ScreenControllingActivity
         }
 
         if (mCapturer == null && prefs.getBoolean(Constants.PREF_CAPTURE_SCREEN_ENABLED, false)) {
-            MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(
+                    Context.MEDIA_PROJECTION_SERVICE);
             startActivityForResult(projectionManager.createScreenCaptureIntent(), Constants.REQUEST_MEDIA_PROJECTION);
         } else if (mCapturer != null && !prefs.getBoolean(Constants.PREF_CAPTURE_SCREEN_ENABLED, false)) {
-            mCapturer.terminate();
+            // stop capture service instead of directly terminating capturer (service owns
+            // the projection)
+            stopService(new Intent(this, ScreenCaptureService.class));
+            if (mCaptureBound) {
+                try {
+                    unbindService(mCaptureSC);
+                } catch (IllegalArgumentException ignored) {
+                }
+                mCaptureBound = false;
+            }
             mCapturer = null;
         }
 
@@ -775,7 +853,8 @@ public class MainActivity extends ScreenControllingActivity
                     (dialogInterface, i) -> {
                         deleteDatabase("HPV");
 
-                        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+                        final SharedPreferences prefs = PreferenceManager
+                                .getDefaultSharedPreferences(MainActivity.this);
                         SharedPreferences.Editor editor1 = prefs.edit();
                         editor1.remove(Constants.PREF_DB_ASKED_ENCRYPTION);
                         editor1.remove(Constants.REST_REALM);
@@ -799,7 +878,8 @@ public class MainActivity extends ScreenControllingActivity
                         protected void onPostExecute(Void aVoid) {
                             NavigationView navigationView = findViewById(R.id.nav_view);
                             MenuItem encryptDbMenu = navigationView.getMenu().findItem(R.id.action_encrypt_database);
-                            encryptDbMenu.setVisible(CredentialManager.getInstance().getDatabaseState(MainActivity.this) == CredentialManager.State.UNENCRYPTED);
+                            encryptDbMenu.setVisible(CredentialManager.getInstance()
+                                    .getDatabaseState(MainActivity.this) == CredentialManager.State.UNENCRYPTED);
                         }
                     }.execute();
                 }
@@ -835,7 +915,8 @@ public class MainActivity extends ScreenControllingActivity
         Intent intent = new Intent(MainActivity.this, PreferenceActivity.class);
         intent.putExtra(Constants.INTENT_FLAG_CAMERA_ENABLED, mCam != null);
         intent.putExtra(Constants.INTENT_FLAG_FLASH_ENABLED, mFlashService != null && mFlashService.isAvailable());
-        intent.putExtra(Constants.INTENT_FLAG_MOTION_ENABLED, mMotionDetector != null && mCam != null && mCam.canBeUsed());
+        intent.putExtra(Constants.INTENT_FLAG_MOTION_ENABLED,
+                mMotionDetector != null && mCam != null && mCam.canBeUsed());
 
         for (IDeviceMonitor m : mMonitors) {
             m.disablePreferences(intent);
