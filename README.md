@@ -1,5 +1,21 @@
 # <img alt="Logo" src="app/src/main/res/mipmap-hdpi/ic_launcher.png" border="0"> HABPanelViewer
 
+**Update January 2026:**
+
+This fork just fixes the app for Android SDK 33 (Android 13), increasing its version to **0.10.0**.\
+I tested it successfully on a Tablet with Android 13, and everything seems to work again.
+
+Open **ToDos**:
+ - update the readme below
+ - testing on more recent Android version
+ - Perform further migrations:
+   - replace `android.content.pm.PackageManager` with `androidx.content.pm.PackageManager`\
+     (requires migration of class `AutocompleteTextPreference`)
+   - fix deprecated usages of `AsyncTask`
+   - fix all the other warnings in the code...
+
+---
+
 #### At the end of 2021, I have stopped maintenance and development of the app.
 
 An openHAB integrated kiosk browser.

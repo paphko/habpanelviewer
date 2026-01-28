@@ -517,7 +517,7 @@ public class ClientWebView extends WebView implements NetworkTracker.INetworkLis
             Log.d(TAG, "resuming webview...");
 
             mPaused = false;
-            if (mPauseUrl == START_URL || loadStartOnScreenOn) {
+            if (START_URL.equals(mPauseUrl) || loadStartOnScreenOn) {
                 loadStartUrl();
             } else {
                 loadUrl(mPauseUrl);
@@ -544,7 +544,7 @@ public class ClientWebView extends WebView implements NetworkTracker.INetworkLis
                 url = mServerURL;
             }
 
-            if (url == null || "".equals(url)) {
+            if (url == null || url.isEmpty()) {
                 post(() -> showHtml(getContext().getString(R.string.configMissing),
                         getContext().getString(R.string.startPageNotSetHTML)));
                 return;
