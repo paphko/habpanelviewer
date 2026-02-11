@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,6 +26,8 @@ public abstract class ScreenControllingActivity extends AppCompatActivity {
     private static String mTouchItem;
     private static long mTouchTime;
     private static int mTouchTimeout;
+
+    private static PowerManager.WakeLock mWakeLock = null;
 
     public static void setBrightness(Context ctx, float brightness) {
         mBrightness = brightness;
@@ -121,8 +124,21 @@ public abstract class ScreenControllingActivity extends AppCompatActivity {
         getScreenOnView().setKeepScreenOn(keepOn);
         if (keepOn) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+            // Acquire WakeLock for Android 16+ to actually turn on the screen
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null && mWakeLock == null) {
+                mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "habpanelviewer:screen_lock");
+                mWakeLock.acquire();
+            }
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+            // Release WakeLock
+            if (mWakeLock != null && mWakeLock.isHeld()) {
+                mWakeLock.release();
+                mWakeLock = null;
+            }
         }
     }
 
